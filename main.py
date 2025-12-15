@@ -345,18 +345,28 @@ async def send_result(obj, data: Dict[str, Any], is_message: bool = False):
 
     price_line = f"\nPrice considered: {price}" if price else ""
     text = (
-        f"*Airlo Trip Check ✅*\n"
-        f"Route: {from_} → {to_} ({trip_type})\n"
-        f"Priority: {priority}{price_line}\n\n"
-        f"*Verdict:* *{verdict_pack['verdict']}*\n"
-        f"*Why:*\n"
-        f"• {verdict_pack['reasons'][0]}\n"
-        f"• {verdict_pack['reasons'][1]}\n"
-        f"{('• ' + verdict_pack['reasons'][2]) if len(verdict_pack['reasons']) > 2 else ''}\n\n"
-        f"*Smarter options:*\n"
-        f"• {verdict_pack['options'][0]}\n"
-        f"{('• ' + verdict_pack['options'][1]) if len(verdict_pack['options']) > 1 else ''}\n"
-        f"{('• ' + verdict_pack['options'][2]) if len(verdict_pack['options']) > 2 else ''}\n"
+        ✈️ Airlo Trip Check
+
+        Route
+        London (Any) → Rome
+        Return · Balanced priority
+
+        Verdict
+        WAIT
+
+        Why this matters
+        • This route typically prices best 3–6 weeks before departure
+        • Current timing suggests inflated short-term demand
+        • Mid-week departures usually stabilise pricing
+
+        Smarter options
+        • Fly Tue–Wed instead of Fri–Sun
+        • Check LGW vs LHR for better value
+        • Avoid early July if flexible
+
+        Best next step
+        Wait and re-check closer to the optimal booking window
+
     )
 
     buttons = kb([
