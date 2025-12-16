@@ -652,7 +652,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("check", check_cmd))
+    # app.add_handler(CommandHandler("check", check_cmd))  # disabled until check_cmd exists
     app.add_handler(CommandHandler("when", when_cmd))
     app.add_handler(CommandHandler("settings", settings_cmd))
 
