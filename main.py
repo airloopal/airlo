@@ -117,9 +117,21 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 # --- Command: /check (Entry screen) ---
-async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    reset_when(user_id)
+
+    await update.message.reply_text(
+        "⏱ *Best Time to Book*\nAnswer a few quick questions and Airlo will suggest the optimal booking window.",
+        parse_mode="Markdown",
+        reply_markup=kb([
+            [InlineKeyboardButton("Start ⏱", callback_data="WHEN_START")],
+            [InlineKeyboardButton("What this does ℹ️", callback_data="WHEN_INFO")],
+        ])
+    )
+
+
+async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     prefs = get_prefs(user_id)
 
@@ -138,6 +150,7 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("Reset preferences ♻️", callback_data="SET_RESET")],
         ])
     )
+
 
     user_id = update.effective_user.id
     reset_when(user_id)
