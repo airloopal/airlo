@@ -49,6 +49,8 @@ def timing_rules(when_data: Dict[str, Any]) -> Dict[str, Any]:
     route_type = when_data.get("route_type")   # SHORT, LONG, DOM, NS
     travel_window = when_data.get("travel_window")  # NM, 2_3, 4_6, PEAK, NS
     flex = when_data.get("flex")  # VF, SF, FX
+    pref_priority = when_data.get("pref_priority", "Balanced")
+
 
     # Defaults
     booking_window = "3–6 weeks before departure"
@@ -59,6 +61,21 @@ def timing_rules(when_data: Dict[str, Any]) -> Dict[str, Any]:
     ]
     avoid = ["Booking on weekends", "Booking too far in advance without a reason"]
     tip = "If flexible, aim for Tue–Wed travel for better value."
+
+    tip = "Default timing advice here"
+
+    # Preference-based tip tweaks
+    if pref_priority.lower() == "cheapest":
+        tip = "For lowest fares, avoid Fri–Sun travel and book mid-week where possible."
+    elif pref_priority.lower() == "fastest":
+        tip = "For fastest itineraries, book earlier in the window to secure direct routes."
+    elif pref_priority.lower() == "comfort":
+        tip = "For comfort, book earlier in the window to secure better flight times and seating options."
+
+return {
+    ...
+    "tip": tip,
+}
 
     # Route type tweaks
     if route_type == "LONG":
