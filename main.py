@@ -178,7 +178,7 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Callback router ---
 async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # -------------------------
+    # -------------------------
     # /settings flow
     # -------------------------
     if cd == "SET_AIRPORT":
@@ -253,6 +253,77 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = state["data"]
 
     cd = query.data
+
+    # -------------------------
+    # /settings flow
+    # -------------------------
+    if cd == "SET_AIRPORT":
+        await query.edit_message_text(
+            "Select your default departure airport:",
+            reply_markup=kb([
+                [InlineKeyboardButton("Any London", callback_data="SET_AP_LON")],
+                [InlineKeyboardButton("LHR", callback_data="SET_AP_LHR"),
+                 InlineKeyboardButton("LGW", callback_data="SET_AP_LGW")],
+                [InlineKeyboardButton("MAN", callback_data="SET_AP_MAN")],
+                [InlineKeyboardButton("Any", callback_data="SET_AP_ANY")],
+            ])
+        )
+        return
+
+    if cd.startswith("SET_AP_"):
+        prefs = get_prefs(user_id)
+        prefs["airport"] = cd.replace("SET_AP_", "")
+        await query.edit_message_text(
+            f"✅ Departure airport set to {prefs['airport']}",
+            reply_markup=kb([[InlineKeyboardButton("Back to settings ⚙️", callback_data="SETTINGS_BACK")]])
+        )
+        return
+
+    if cd == "SET_PRIORITY":
+        await query.edit_message_text(
+            "Select your default travel priority:",
+            reply_markup=kb([
+                [InlineKeyboardButton("Cheapest", callback_data="SET_PR_CHEAP")],
+                [InlineKeyboardButton("Balanced", callback_data="SET_PR_BAL")],
+                [InlineKeyboardButton("Fastest", callback_data="SET_PR_FAST")],
+                [InlineKeyboardButton("Comfort", callback_data="SET_PR_COMF")],
+            ])
+        )
+        return
+
+    if cd.startswith("SET_PR_"):
+        prefs = get_prefs(user_id)
+        prefs["priority"] = cd.replace("SET_PR_", "").title()
+        await query.edit_message_text(
+            f"✅ Travel priority set to {prefs['priority']}",
+            reply_markup=kb([[InlineKeyboardButton("Back to settings ⚙️", callback_data="SETTINGS_BACK")]])
+        )
+        return
+
+    if cd == "SET_RESET":
+        state = get_state(user_id)
+        state["prefs"] = {"airport": "Any", "priority": "Balanced"}
+        await query.edit_message_text(
+            "♻️ Preferences reset to default.",
+            reply_markup=kb([[InlineKeyboardButton("Back to settings ⚙️", callback_data="SETTINGS_BACK")]])
+        )
+        return
+
+    if cd == "SETTINGS_BACK":
+        prefs = get_prefs(user_id)
+        await query.edit_message_text(
+            "⚙️ Preferences\n\n"
+            f"Departure airport: {prefs['airport']}\n"
+            f"Travel priority: {prefs['priority']}\n\n"
+            "Update your preferences below.",
+            reply_markup=kb([
+                [InlineKeyboardButton("Departure airport ✈️", callback_data="SET_AIRPORT")],
+                [InlineKeyboardButton("Travel priority 🎯", callback_data="SET_PRIORITY")],
+                [InlineKeyboardButton("Reset preferences ♻️", callback_data="SET_RESET")],
+            ])
+        )
+        return
+
 
     # -------------------------
     # /when flow (buttons)
