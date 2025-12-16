@@ -542,6 +542,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("check", check_cmd))
+    app.add_handler(CommandHandler("when", when_cmd))
 
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(CallbackQueryHandler(settings_soon, pattern="^SETTINGS_SOON$"))
