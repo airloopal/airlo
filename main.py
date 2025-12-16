@@ -669,6 +669,22 @@ def rule_based_verdict(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def send_result(obj, data: Dict[str, Any], is_message: bool = False):
+    user_id = obj.from_user.id if hasattr(obj, "from_user") else None
+    prefs = get_prefs(user_id) if user_id else {"airport": "Any", "priority": "Balanced"}
+
+    # Use preference if user didn't specify a precise airport
+    if data.get("departure") in (None, "ANY", "Any", "ANY LONDON"):
+        if prefs.get("airport") not in ("Any", "ANY"):
+            data["departure"] = prefs["airport"]
+
+    # Use preferred priority if not set
+    if data.get("priority") in (None, "", "BAL"):
+        pass  # leave as-is for now
+
+    # 👇 existing code continues below
+    from_ = data.get("departure")
+    to_ = data.get("destination")
+    priority = data.get("priority")
     from_ = data.get("departure", "—")
     to_ = data.get("destination", "—")
     trip_type = data.get("trip_type", "—")
