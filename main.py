@@ -28,7 +28,60 @@ def get_state(user_id: int) -> Dict[str, Any]:
     return USER_STATE[user_id]
 
 def reset_check(user_id: int):
-    USER_STATE[user_id] = {"step": "CHECK_ENTRY", "data": {}}
+    def reset_when(user_id: int):
+    # Starts the /when flow
+    USER_STATE[user_id] = {"step": "WHEN_ENTRY", "data": {}}
+
+def timing_rules(when_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Free, rule-based timing output. No APIs, no AI.
+    """
+    route_type = when_data.get("route_type")   # SHORT, LONG, DOM, NS
+    travel_window = when_data.get("travel_window")  # NM, 2_3, 4_6, PEAK, NS
+    flex = when_data.get("flex")  # VF, SF, FX
+
+    # Defaults
+    booking_window = "3–6 weeks before departure"
+    why = [
+        "Prices often stabilise in this window for many routes.",
+        "Mid-week travel tends to reduce demand pressure.",
+        "Booking too early can lock in inflated pricing.",
+    ]
+    avoid = ["Booking on weekends", "Booking too far in advance without a reason"]
+    tip = "If flexible, aim for Tue–Wed travel for better value."
+
+    # Route type tweaks
+    if route_type == "LONG":
+        booking_window = "6–10 weeks before departure"
+        why[0] = "Long-haul pricing often rewards earlier planning."
+    if route_type == "DOM":
+        booking_window = "2–4 weeks before departure"
+        why[0] = "Short domestic routes can price best closer in."
+    if route_type == "NS":
+        booking_window = "3–6 weeks before departure"
+
+    # Travel window tweaks
+    if travel_window == "PEAK":
+        booking_window = "8–12 weeks before departure"
+        why[1] = "Peak season demand pushes fares up earlier."
+        avoid = ["Last-minute booking", "Fri–Sun peak travel days"]
+    elif travel_window == "4_6":
+        why[2] = "You can often wait before committing unless it’s peak season."
+    elif travel_window == "NM":
+        avoid = ["Waiting too long if dates are fixed", "Fri–Sun departures"]
+
+    # Flex tweaks
+    if flex == "FX":
+        tip = "With fixed dates, book within the recommended window to reduce risk."
+    elif flex == "VF":
+        tip = "With high flexibility, you can wait for dips and avoid peak travel days."
+
+    return {
+        "booking_window": booking_window,
+        "why": why[:3],
+        "avoid": avoid[:2],
+        "tip": tip
+    }
 
 def kb(rows):
     return InlineKeyboardMarkup(rows)
@@ -55,6 +108,19 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Command: /check (Entry screen) ---
 async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    reset_when(user_id)
+
+    await update.message.reply_text(
+        "⏱ *Best Time to Book*\nAnswer a few quick questions and Airlo will suggest the optimal booking window.",
+        parse_mode="Markdown",
+        reply_markup=kb([
+            [InlineKeyboardButton("Start ⏱", callback_data="WHEN_START")],
+            [InlineKeyboardButton("What this does ℹ️", callback_data="WHEN_INFO")],
+        ])
+    )
+    
     user_id = update.effective_user.id
     reset_check(user_id)
 
