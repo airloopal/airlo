@@ -143,6 +143,92 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     cd = query.data
 
+    # -------------------------
+    # /when flow (buttons)
+    # -------------------------
+    if cd == "WHEN_INFO":
+        await query.edit_message_text(
+            "Airlo gives you the best booking window based on route type, seasonality, and flexibility.\n\n"
+            "Tap *Start* to continue.",
+            parse_mode="Markdown",
+            reply_markup=kb([[InlineKeyboardButton("Start ⏱", callback_data="WHEN_START")]])
+        )
+        return
+
+    if cd == "WHEN_START":
+        state["step"] = "WHEN_ROUTE_TYPE"
+        await query.edit_message_text(
+            "What kind of route is this?",
+            reply_markup=kb([
+                [InlineKeyboardButton("Short-haul (Europe)", callback_data="WHEN_RT_SHORT")],
+                [InlineKeyboardButton("Long-haul", callback_data="WHEN_RT_LONG")],
+                [InlineKeyboardButton("Domestic", callback_data="WHEN_RT_DOM")],
+                [InlineKeyboardButton("Not sure", callback_data="WHEN_RT_NS")],
+            ])
+        )
+        return
+
+    if cd.startswith("WHEN_RT_"):
+        rt = cd.replace("WHEN_RT_", "")  # SHORT/LONG/DOM/NS
+        data["route_type"] = rt
+        state["step"] = "WHEN_TRAVEL_WINDOW"
+        await query.edit_message_text(
+            "When are you travelling?",
+            reply_markup=kb([
+                [InlineKeyboardButton("Next month", callback_data="WHEN_TW_NM")],
+                [InlineKeyboardButton("2–3 months", callback_data="WHEN_TW_2_3")],
+                [InlineKeyboardButton("4–6 months", callback_data="WHEN_TW_4_6")],
+                [InlineKeyboardButton("Peak season", callback_data="WHEN_TW_PEAK")],
+                [InlineKeyboardButton("Not sure", callback_data="WHEN_TW_NS")],
+            ])
+        )
+        return
+
+    if cd.startswith("WHEN_TW_"):
+        tw = cd.replace("WHEN_TW_", "")  # NM/2_3/4_6/PEAK/NS
+        data["travel_window"] = tw
+        state["step"] = "WHEN_FLEX"
+        await query.edit_message_text(
+            "How flexible are you?",
+            reply_markup=kb([
+                [InlineKeyboardButton("Very flexible", callback_data="WHEN_FX_VF")],
+                [InlineKeyboardButton("Somewhat flexible", callback_data="WHEN_FX_SF")],
+                [InlineKeyboardButton("Fixed dates", callback_data="WHEN_FX_FX")],
+            ])
+        )
+        return
+
+    if cd.startswith("WHEN_FX_"):
+        fx = cd.replace("WHEN_FX_", "")  # VF/SF/FX
+        data["flex"] = fx
+        state["step"] = "WHEN_DONE"
+
+        insight = timing_rules(data)
+
+        text = (
+            "⏱ Airlo Timing Insight\n\n"
+            "Recommended booking window\n"
+            f"{insight['booking_window']}\n\n"
+            "Why\n"
+            f"• {insight['why'][0]}\n"
+            f"• {insight['why'][1]}\n"
+            f"• {insight['why'][2]}\n\n"
+            "Avoid\n"
+            f"• {insight['avoid'][0]}\n"
+            f"• {insight['avoid'][1]}\n\n"
+            "Tip\n"
+            f"{insight['tip']}"
+        )
+
+        await query.edit_message_text(
+            text,
+            reply_markup=kb([
+                [InlineKeyboardButton("Run a Trip Check ✈️", callback_data="CHECK_START")],
+                [InlineKeyboardButton("Preferences ⚙️", callback_data="SETTINGS_SOON")],
+            ])
+        )
+        return
+    
     # Info
     if cd == "CHECK_INFO":
         await query.edit_message_text(
