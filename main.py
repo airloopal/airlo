@@ -28,8 +28,9 @@ def get_state(user_id: int) -> Dict[str, Any]:
     return USER_STATE[user_id]
 
 def reset_check(user_id: int):
-    def reset_when(user_id: int):
-    # Starts the /when flow
+    USER_STATE[user_id] = {"step": "CHECK_ENTRY", "data": {}}
+
+def reset_when(user_id: int):
     USER_STATE[user_id] = {"step": "WHEN_ENTRY", "data": {}}
 
 def get_prefs(user_id: int) -> Dict[str, Any]:
