@@ -402,6 +402,9 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data["flex"] = fx
         state["step"] = "WHEN_DONE"
 
+        prefs = get_prefs(user_id)
+        data["pref_priority"] = prefs.get("priority", "Balanced")
+        
         insight = timing_rules(data)
 
         text = (
