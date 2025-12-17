@@ -72,10 +72,12 @@ def timing_rules(when_data: Dict[str, Any]) -> Dict[str, Any]:
     elif pref_priority.lower() == "comfort":
         tip = "For comfort, book earlier in the window to secure better flight times and seating options."
 
-return {
-    ...
-    "tip": tip,
-}
+    return {
+        "booking_window": booking_window,
+        "why": why[:3],
+        "avoid": avoid[:2],
+        "tip": tip
+    }
 
     # Route type tweaks
     if route_type == "LONG":
