@@ -143,6 +143,9 @@ def kb(rows):
 
 # --- Command: /start ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(access_status_text(user_id))
     user_id = update.effective_user.id
 
     # Deep-link unlock codes (V1)
@@ -168,7 +171,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # --- Command: /help ---
+
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(access_status_text(user_id))
+
     user_id = update.effective_user.id
     await update.message.reply_text(access_status_text(user_id))
     text = (
@@ -182,6 +190,9 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Command: /check (Entry screen) ---
 async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(access_status_text(user_id))
     user_id = update.effective_user.id
     reset_when(user_id)
 
@@ -196,6 +207,9 @@ async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(access_status_text(user_id))
     user_id = update.effective_user.id
     prefs = get_prefs(user_id)
 
