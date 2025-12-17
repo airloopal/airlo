@@ -655,8 +655,10 @@ async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def rule_based_verdict(data: Dict[str, Any]) -> Dict[str, Any]:
     # Very simple MVP rules you can improve later
-    window = data.get("window")  # "0_2", "2_6", "1_3", "3P", "NS"
-    priority = data.get("priority")  # CHEAP, BAL, FAST, COMF
+    window = data.get("window")  # 0_2, 2_6, 1_3, 3P, NS
+    pref_priority = (data.get("pref_priority") or "Balanced").lower()
+    pref_airport = data.get("pref_airport") or "Any"
+
 
     verdict = "WAIT"
     reasons = []
@@ -687,10 +689,32 @@ def rule_based_verdict(data: Dict[str, Any]) -> Dict[str, Any]:
         reasons.append("Without dates, the safest move is to check typical booking windows.")
         options.append("Run /when next (coming soon) for the best time to book.")
 
+    # Preference-aware tweaks
+    if pref_priority == "cheapest":
+        options.insert(0, "Prioritise Tue–Wed travel and avoid Fri–Sun if possible.")
+        options.insert(1, f"Use nearby airports where possible (your default: {pref_airport}).")
+        reasons.append("Cheapest-first trips benefit most from mid-week timing and flexible airports.")
+    elif pref_priority == "fastest":
+        options.insert(0, "Prioritise direct routes and shortest connections (even if slightly higher).")
+        options.insert(1, "Book earlier in the optimal window to secure the best direct options.")
+        reasons.append("Fastest-first trips often require earlier booking to secure direct seats.")
+    elif pref_priority == "comfort":
+        options.insert(0, "Aim for better departure times (avoid red-eyes if you can).")
+        options.insert(1, "Book earlier in the window to secure better flight times and seating.")
+        reasons.append("Comfort-first trips benefit from earlier booking and better departure times.")
+
+    # Keep lists tidy
+    reasons = reasons[:3]
+    options = options[:3]
+
+
     return {"verdict": verdict, "reasons": reasons[:3], "options": options[:3]}
 
 
 async def send_result(obj, data: Dict[str, Any], is_message: bool = False):
+    prefs = get_prefs(user_id) if user_id else {"airport": "Any", "priority": "Balanced"}
+    data["pref_priority"] = prefs.get("priority", "Balanced")
+    data["pref_airport"] = prefs.get("airport", "Any")
     user_id = obj.from_user.id if hasattr(obj, "from_user") else None
     prefs = get_prefs(user_id) if user_id else {"airport": "Any", "priority": "Balanced"}
 
