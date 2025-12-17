@@ -201,21 +201,15 @@ async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Callback router ---
 async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # -------------------------
-    # /settings flow
-    # -------------------------
-    if cd == "SET_AIRPORT":
-        print("BUTTON CLICKED:", cd)
-        await query.edit_message_text(
-            "Select your default departure airport:",
-            reply_markup=kb([
-                [InlineKeyboardButton("Any London", callback_data="SET_AP_LON")],
-                [InlineKeyboardButton("LHR", callback_data="SET_AP_LHR"),
-                 InlineKeyboardButton("LGW", callback_data="SET_AP_LGW")],
-                [InlineKeyboardButton("MAN", callback_data="SET_AP_MAN")],
-            ])
-        )
-        return
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    state = get_state(user_id)
+    data = state["data"]
+
+    cd = query.data
+    print("BUTTON CLICKED:", cd)
 
     if cd.startswith("SET_AP_"):
         prefs = get_prefs(user_id)
@@ -451,6 +445,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Start -> Trip type
     if cd == "CHECK_START":
+        reset_check(user_id)
         state["step"] = "TRIP_TYPE"
         await query.edit_message_text(
             "What type of trip is this?",
