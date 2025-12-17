@@ -14,6 +14,8 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+from datetime import datetime, timedelta
+
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
@@ -22,6 +24,30 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 USER_STATE: Dict[int, Dict[str, Any]] = {}
 
 # --- Helpers ---
+def grant_access(user_id: int, tier: str, days: int):
+    state = get_state(user_id)
+    state["access_tier"] = tier
+    state["access_until"] = datetime.utcnow() + timedelta(days=days)
+
+def has_access(user_id: int) -> bool:
+    state = get_state(user_id)
+    until = state.get("access_until")
+    if not until:
+        return False
+    return datetime.utcnow() < until
+
+def access_status_text(user_id: int) -> str:
+    state = get_state(user_id)
+    tier = state.get("access_tier", "none")
+    until = state.get("access_until")
+    if not until:
+        return "🔒 No access active.\n\nGet 7-day access for £1 at tryairlo.com"
+    remaining = until - datetime.utcnow()
+    hours = int(remaining.total_seconds() // 3600)
+    if hours < 0:
+        return "🔒 Access expired.\n\nRenew at tryairlo.com"
+    return f"✅ Access: {tier}\n⏳ Expires in ~{hours} hours"
+
 def get_state(user_id: int) -> Dict[str, Any]:
     if user_id not in USER_STATE:
         USER_STATE[user_id] = {"step": None, "data": {}}
