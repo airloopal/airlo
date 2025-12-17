@@ -117,12 +117,16 @@ def kb(rows):
 
 # --- Command: /start ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = (
+    await update.message.reply_text(
         "✈️ Welcome to *Airlo*\n\n"
-        "Airlo helps you make smarter travel decisions *before you book*.\n\n"
-        "Start with /check"
+        "Pick what you need:",
+        parse_mode="Markdown",
+        reply_markup=kb([
+            [InlineKeyboardButton("✅ Trip Check", callback_data="CHECK_START")],
+            [InlineKeyboardButton("⏱ Best Time to Book", callback_data="WHEN_START")],
+            [InlineKeyboardButton("⚙️ Preferences", callback_data="SETTINGS_BACK")],
+        ])
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
 
 # --- Command: /help ---
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -357,6 +361,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cd == "WHEN_START":
+        reset_when(user_id)
         state["step"] = "WHEN_ROUTE_TYPE"
         await query.edit_message_text(
             "What kind of route is this?",
