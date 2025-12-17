@@ -398,22 +398,24 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if cd == "WHEN_START":
         if not has_access(user_id):
-        await query.edit_message_text(
-            "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
+            await query.edit_message_text(
+                "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
             )
-        return
-        reset_when(user_id)
-        state["step"] = "WHEN_ROUTE_TYPE"
-        await query.edit_message_text(
-            "What kind of route is this?",
-            reply_markup=kb([
-                [InlineKeyboardButton("Short-haul (Europe)", callback_data="WHEN_RT_SHORT")],
-                [InlineKeyboardButton("Long-haul", callback_data="WHEN_RT_LONG")],
-                [InlineKeyboardButton("Domestic", callback_data="WHEN_RT_DOM")],
-                [InlineKeyboardButton("Not sure", callback_data="WHEN_RT_NS")],
-            ])
-        )
-        return
+            return
+
+    reset_when(user_id)
+    state["step"] = "WHEN_ROUTE_TYPE"
+    await query.edit_message_text(
+        "What kind of route is this?",
+        reply_markup=kb([
+            [InlineKeyboardButton("Short-haul (Europe)", callback_data="WHEN_RT_SHORT")],
+            [InlineKeyboardButton("Long-haul", callback_data="WHEN_RT_LONG")],
+            [InlineKeyboardButton("Domestic", callback_data="WHEN_RT_DOM")],
+            [InlineKeyboardButton("Not sure", callback_data="WHEN_RT_NS")],
+        ])
+    )
+    return
+
 
     if cd.startswith("WHEN_RT_"):
         rt = cd.replace("WHEN_RT_", "")  # SHORT/LONG/DOM/NS
@@ -492,20 +494,22 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Start -> Trip type
     if cd == "CHECK_START":
         if not has_access(user_id):
-        await query.edit_message_text(
-            "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
-        )
-        return
-        reset_check(user_id)
-        state["step"] = "TRIP_TYPE"
-        await query.edit_message_text(
-            "What type of trip is this?",
-            reply_markup=kb([
-                [InlineKeyboardButton("Return 🔁", callback_data="TRIP_RETURN")],
-                [InlineKeyboardButton("One-way ✈️", callback_data="TRIP_ONEWAY")],
-            ])
-        )
-        return
+            await query.edit_message_text(
+                "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
+            )
+            return
+
+    reset_check(user_id)
+    state["step"] = "TRIP_TYPE"
+    await query.edit_message_text(
+        "What type of trip is this?",
+        reply_markup=kb([
+            [InlineKeyboardButton("Return 🔁", callback_data="TRIP_RETURN")],
+            [InlineKeyboardButton("One-way ➡️", callback_data="TRIP_ONEWAY")],
+        ])
+    )
+    return
+
 
     # Trip type chosen -> Departure region
     if cd in ("TRIP_RETURN", "TRIP_ONEWAY"):
