@@ -143,6 +143,19 @@ def kb(rows):
 
 # --- Command: /start ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # Deep-link unlock codes (V1)
+    # Website success page will send users to: t.me/AirloBot?start=trial7
+    if context.args:
+        code = context.args[0].lower()
+        if code == "trial7":
+            grant_access(user_id, "trial", 7)
+        elif code == "premium":
+            grant_access(user_id, "premium", 30)  # placeholder until Stripe webhook
+
+    # ... keep your existing welcome/menu reply below
+
     await update.message.reply_text(
         "✈️ Welcome to *Airlo*\n\n"
         "Pick what you need:",
@@ -156,6 +169,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Command: /help ---
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    await update.message.reply_text(access_status_text(user_id))
     text = (
         "Available commands:\n\n"
         "/check — Sense-check a trip before booking\n"
@@ -382,6 +397,11 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cd == "WHEN_START":
+        if not has_access(user_id):
+        await query.edit_message_text(
+            "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
+            )
+        return
         reset_when(user_id)
         state["step"] = "WHEN_ROUTE_TYPE"
         await query.edit_message_text(
@@ -471,6 +491,11 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Start -> Trip type
     if cd == "CHECK_START":
+        if not has_access(user_id):
+        await query.edit_message_text(
+            "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
+        )
+        return
         reset_check(user_id)
         state["step"] = "TRIP_TYPE"
         await query.edit_message_text(
@@ -819,6 +844,7 @@ def main():
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(CallbackQueryHandler(settings_soon, pattern="^SETTINGS_SOON$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    app.add_handler(CommandHandler("status", status_cmd))
 
     app.run_polling()
 
