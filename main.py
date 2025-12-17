@@ -205,6 +205,7 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # /settings flow
     # -------------------------
     if cd == "SET_AIRPORT":
+        print("BUTTON CLICKED:", cd)
         await query.edit_message_text(
             "Select your default departure airport:",
             reply_markup=kb([
