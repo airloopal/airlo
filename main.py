@@ -172,9 +172,9 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Command: /help ---
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    await update.message.reply_text(access_status_text(user_id))
+    async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_id = update.effective_user.id
+        await update.message.reply_text(access_status_text(user_id))
 
     user_id = update.effective_user.id
     await update.message.reply_text(access_status_text(user_id))
