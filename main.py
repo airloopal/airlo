@@ -146,7 +146,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     await update.message.reply_text(access_status_text(user_id))
-    user_id = update.effective_user.id
 
     # Deep-link unlock codes (V1)
     # Website success page will send users to: t.me/AirloBot?start=trial7
