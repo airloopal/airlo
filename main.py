@@ -171,27 +171,31 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Command: /help ---
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_id = update.effective_user.id
-        await update.message.reply_text(access_status_text(user_id))
-
-    user_id = update.effective_user.id
-    await update.message.reply_text(access_status_text(user_id))
     text = (
         "Available commands:\n\n"
         "/check — Sense-check a trip before booking\n"
-        "/when — Best time to book (coming next)\n"
-        "/settings — Preferences (coming next)\n"
+        "/when — Best time to book\n"
+        "/settings — Preferences\n"
+        "/status — Your access status\n"
         "/help — This menu"
     )
     await update.message.reply_text(text)
 
-# --- Command: /check (Entry screen) ---
-async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     await update.message.reply_text(access_status_text(user_id))
+
+
+async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+
+    if not has_access(user_id):
+        await update.message.reply_text(
+            "🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month."
+        )
+        return
+
     reset_when(user_id)
 
     await update.message.reply_text(
@@ -205,9 +209,6 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def settings_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    await update.message.reply_text(access_status_text(user_id))
     user_id = update.effective_user.id
     prefs = get_prefs(user_id)
 
@@ -217,6 +218,16 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Travel priority: {prefs['priority']}\n\n"
         "Update your preferences below."
     )
+
+    await update.message.reply_text(
+        text,
+        reply_markup=kb([
+            [InlineKeyboardButton("Departure airport ✈️", callback_data="SET_AIRPORT")],
+            [InlineKeyboardButton("Travel priority 🎯", callback_data="SET_PRIORITY")],
+            [InlineKeyboardButton("Reset preferences ♻️", callback_data="SET_RESET")],
+        ])
+    )
+
 
     await update.message.reply_text(
         text,
