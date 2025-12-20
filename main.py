@@ -142,7 +142,6 @@ def kb(rows):
     return InlineKeyboardMarkup(rows)
 
 # --- Command: /start ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     await update.message.reply_text(access_status_text(user_id))
