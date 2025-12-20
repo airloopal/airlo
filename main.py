@@ -18,6 +18,9 @@ from telegram.ext import (
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
+# ✅ Your Stripe monthly link (upgrade from inside Telegram)
+AIRLO_MONTHLY_LINK = "https://buy.stripe.com/3cI8wO3Hc0JC9zudZrgnK06"
+
 # --- Simple per-user state store (MVP) ---
 USER_STATE: Dict[int, Dict[str, Any]] = {}
 
@@ -28,7 +31,6 @@ USER_STATE: Dict[int, Dict[str, Any]] = {}
 def get_state(user_id: int) -> Dict[str, Any]:
     if user_id not in USER_STATE:
         USER_STATE[user_id] = {"step": None, "data": {}, "prefs": {"airport": "Any", "priority": "Balanced"}}
-    # Ensure prefs exist
     if "prefs" not in USER_STATE[user_id]:
         USER_STATE[user_id]["prefs"] = {"airport": "Any", "priority": "Balanced"}
     if "data" not in USER_STATE[user_id]:
@@ -61,12 +63,16 @@ def access_status_text(user_id: int) -> str:
     state = get_state(user_id)
     tier = state.get("access_tier", "none")
     until = state.get("access_until")
+
     if not until:
-        return "🔒 No access active.\n\nGet 7-day access for £1 at tryairlo.com"
+        return "🔒 No access active.\n\nStart Airlo Monthly to continue using the bot."
+
     remaining = until - datetime.utcnow()
     hours = int(remaining.total_seconds() // 3600)
     if hours <= 0:
-        return "🔒 Access expired.\n\nRenew at tryairlo.com"
+        return "🔒 Access expired.\n\nRestart Airlo Monthly to continue."
+
+    # Basic, clear status (you can later add renewal date via Stripe webhook)
     return f"✅ Access: {tier}\n⏳ Expires in ~{hours} hours"
 
 
@@ -86,6 +92,21 @@ def kb(rows):
     return InlineKeyboardMarkup(rows)
 
 
+async def send_upgrade_prompt(target):
+    """
+    Sends a clean upgrade prompt with Stripe Payment Link.
+    target can be update.message or query.message (both support reply_text).
+    """
+    await target.reply_text(
+        "🔒 Airlo access required\n\n"
+        "Your trial has ended (or no access is active).\n"
+        "Upgrade to continue using Trip Check + timing tools:",
+        reply_markup=kb([
+            [InlineKeyboardButton("Upgrade to Airlo (£19/month) 🔓", url=AIRLO_MONTHLY_LINK)]
+        ])
+    )
+
+
 # -------------------------
 # /when compute (rule-based)
 # -------------------------
@@ -97,42 +118,42 @@ def timing_rules(when_data: Dict[str, Any]) -> Dict[str, Any]:
 
     booking_window = "3–6 weeks before departure"
     why = [
-        "Prices often stabilise in this window for many routes.",
-        "Mid-week travel tends to reduce demand pressure.",
-        "Booking too early can lock in inflated pricing.",
+        "Fares often stabilise in this window once airlines have clearer demand signals.",
+        "Mid-week inventory typically prices cleaner than Fri–Sun peak demand.",
+        "Booking too early can lock in inflated early-season pricing.",
     ]
-    avoid = ["Booking on weekends", "Booking too far in advance without a reason"]
-    tip = "If flexible, aim for Tue–Wed travel for better value."
+    avoid = ["Booking on weekends", "Locking in too early without fixed dates"]
+    tip = "If you can, aim for Tue–Wed departures and compare nearby airports."
 
     # Route type tweaks
     if route_type == "LONG":
         booking_window = "6–10 weeks before departure"
-        why[0] = "Long-haul pricing often rewards earlier planning."
+        why[0] = "Long-haul fares often reward earlier planning due to limited cabin inventory."
     elif route_type == "DOM":
         booking_window = "2–4 weeks before departure"
-        why[0] = "Short domestic routes can price best closer in."
+        why[0] = "Domestic routes can price best closer in, unless it’s a peak travel week."
 
     # Travel window tweaks
     if travel_window == "PEAK":
         booking_window = "8–12 weeks before departure"
-        why[1] = "Peak season demand pushes fares up earlier."
+        why[1] = "Peak season load factors climb early, pushing prices up sooner."
         avoid = ["Last-minute booking", "Fri–Sun peak travel days"]
     elif travel_window == "NM":
         avoid = ["Waiting too long if dates are fixed", "Fri–Sun departures"]
 
     # Flex tweaks
     if flex == "FX":
-        tip = "With fixed dates, book within the recommended window to reduce risk."
+        tip = "With fixed dates, book within the recommended window to reduce pricing risk."
     elif flex == "VF":
-        tip = "With high flexibility, you can wait for dips and avoid peak travel days."
+        tip = "With high flexibility, wait for dips and avoid peak days to improve value."
 
     # Preference-based tip tweaks
     if pref_priority == "cheapest":
-        tip = "For lowest fares, avoid Fri–Sun travel and book mid-week where possible."
+        tip = "Cheapest-first: avoid Fri–Sun, target Tue–Wed, and compare alternate airports."
     elif pref_priority == "fastest":
-        tip = "For fastest itineraries, book earlier in the window to secure direct routes."
+        tip = "Fastest-first: book earlier in the window to secure direct routings and short connections."
     elif pref_priority == "comfort":
-        tip = "For comfort, book earlier in the window to secure better flight times and seating options."
+        tip = "Comfort-first: book earlier to secure better departure times, seat options, and fewer connections."
 
     return {
         "booking_window": booking_window,
@@ -157,55 +178,53 @@ def rule_based_verdict(data: Dict[str, Any]) -> Dict[str, Any]:
 
     if window == "0_2":
         verdict = "BOOK" if priority_raw in ("FAST", "COMF") else "WAIT"
-        reasons.append("Close to departure: prices can be volatile.")
-        reasons.append("If flexible, shifting mid-week often improves value.")
-        options.append("Avoid Fri/Sun departures for better pricing where possible.")
+        reasons.append("Close to departure: fares can swing quickly as inventory tightens.")
+        reasons.append("Peak-day demand (Fri/Sun) can add a premium even on short routes.")
+        options.append("If possible, shift to Tue–Wed or Saturday for cleaner pricing.")
     elif window == "2_6":
         verdict = "BOOK"
-        reasons.append("This is typically the best booking window for many routes.")
-        reasons.append("Mid-week departures often price better and run smoother.")
-        options.append("Check nearby airports for improved value vs convenience.")
+        reasons.append("This is commonly the best optimisation window for many short/medium routes.")
+        reasons.append("Airlines have set pricing bands but demand hasn’t fully peaked yet.")
+        options.append("Compare airport pairs (e.g., LHR vs LGW) for better value.")
     elif window == "1_3":
         verdict = "WAIT"
-        reasons.append("Often early for best pricing — good time to plan, not commit.")
-        reasons.append("Watch for dips 3–6 weeks before travel on many routes.")
-        options.append("If travelling in peak season, book earlier than normal.")
+        reasons.append("Often early for best pricing — good for planning, not always for buying.")
+        reasons.append("Watch for dips around 3–6 weeks pre-departure on many routes.")
+        options.append("If it’s peak season or fixed dates, consider booking earlier.")
     elif window == "3P":
         verdict = "WAIT"
-        reasons.append("Usually too early to lock in the best price (unless peak dates).")
-        reasons.append("Better value often appears closer to 6–10 weeks out.")
-        options.append("If it’s a peak period (summer/holidays), consider booking earlier.")
+        reasons.append("Usually too early to lock the best price unless it’s peak dates.")
+        reasons.append("Better value often appears closer to the optimal window.")
+        options.append("Set a reminder and re-check as you approach 8–12 / 3–6 weeks.")
     else:
         verdict = "WAIT"
-        reasons.append("Without dates, the safest move is to check typical booking windows.")
-        options.append("Run /when for a recommended booking window.")
+        reasons.append("Without dates, safest move is to benchmark typical booking windows.")
+        options.append("Run /when for a route-based booking window.")
 
     # Preference-aware tweaks
     if pref_priority == "cheapest":
-        options.insert(0, "Prioritise Tue–Wed travel and avoid Fri–Sun if possible.")
-        options.insert(1, f"Use nearby airports where possible (your default: {pref_airport}).")
-        reasons.append("Cheapest-first trips benefit most from mid-week timing and flexible airports.")
+        options.insert(0, "Cheapest-first: aim Tue–Wed and avoid Fri–Sun if possible.")
+        options.insert(1, f"Default airport setting: {pref_airport} (adjust in Preferences).")
+        reasons.append("Cheapest-first trips benefit most from flexibility and airport pair comparisons.")
     elif pref_priority == "fastest":
-        options.insert(0, "Prioritise direct routes and shortest connections (even if slightly higher).")
-        options.insert(1, "Book earlier in the window to secure the best direct options.")
-        reasons.append("Fastest-first trips often require earlier booking to secure direct seats.")
+        options.insert(0, "Fastest-first: prioritise direct routings and minimal connections.")
+        options.insert(1, "Book earlier in the window to secure the best direct inventory.")
+        reasons.append("Fastest-first trips often need earlier booking to lock direct seats.")
     elif pref_priority == "comfort":
-        options.insert(0, "Aim for better departure times (avoid red-eyes if you can).")
-        options.insert(1, "Book earlier to secure better flight times and seating options.")
-        reasons.append("Comfort-first trips benefit from earlier booking and better departure times.")
+        options.insert(0, "Comfort-first: avoid extreme departure times and multiple connections.")
+        options.insert(1, "Book earlier to secure better cabin/seat availability.")
+        reasons.append("Comfort-first trips benefit from better timing and route quality.")
 
     return {"verdict": verdict, "reasons": reasons[:3], "options": options[:3]}
 
 
 async def send_result(obj, data: Dict[str, Any], is_message: bool = False):
-    # Identify user and apply preferences
     user_id = obj.from_user.id if hasattr(obj, "from_user") else None
     prefs = get_prefs(user_id) if user_id else {"airport": "Any", "priority": "Balanced"}
 
     data["pref_priority"] = prefs.get("priority", "Balanced")
     data["pref_airport"] = prefs.get("airport", "Any")
 
-    # Apply preferred airport if departure is vague
     if data.get("departure") in (None, "", "ANY", "Any", "ANY LONDON", "LON"):
         if prefs.get("airport") not in ("Any", "ANY"):
             data["departure"] = prefs["airport"]
@@ -263,10 +282,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if code == "trial7":
             grant_access(user_id, "trial", 7)
         elif code == "premium":
-            grant_access(user_id, "premium", 30)  # placeholder until Stripe webhook
+            grant_access(user_id, "premium", 30)  # placeholder until webhook verification
 
     await update.message.reply_text(
-        "✈️ Welcome to Airlo\n\nPick what you need:",
+        "✈️ Welcome to Airlo\n\n"
+        "We help you avoid peak-day markups, bad routings, and booking at the wrong time.\n\n"
+        "Pick what you need:",
         reply_markup=kb([
             [InlineKeyboardButton("✅ Trip Check", callback_data="CHECK_START")],
             [InlineKeyboardButton("⏱ Best Time to Book", callback_data="WHEN_START")],
@@ -279,10 +300,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "Available commands:\n\n"
-        "/check — Sense-check a trip before booking\n"
-        "/when — Best time to book\n"
-        "/settings — Preferences\n"
-        "/status — Your access status\n"
+        "/check — Trip sanity check (timing / route / options)\n"
+        "/when — Best booking window (rule-based)\n"
+        "/settings — Set default airport + priority\n"
+        "/status — Access status + upgrade\n"
         "/help — This menu"
     )
     await update.message.reply_text(text)
@@ -290,18 +311,29 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    await update.message.reply_text(access_status_text(user_id))
+    text = access_status_text(user_id)
+
+    if not has_access(user_id):
+        await update.message.reply_text(
+            text,
+            reply_markup=kb([
+                [InlineKeyboardButton("Upgrade to Airlo (£19/month) 🔓", url=AIRLO_MONTHLY_LINK)]
+            ])
+        )
+    else:
+        await update.message.reply_text(text)
 
 
 async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not has_access(user_id):
-        await update.message.reply_text("🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month.")
+        await send_upgrade_prompt(update.message)
         return
 
     reset_check(user_id)
     await update.message.reply_text(
-        "✅ Trip Check\nTap start:",
+        "✅ Trip Check\n\n"
+        "Quick questions — then you’ll get a fare/timing sanity check.",
         reply_markup=kb([
             [InlineKeyboardButton("Start Trip Check ✅", callback_data="CHECK_START")],
             [InlineKeyboardButton("What this does ℹ️", callback_data="CHECK_INFO")],
@@ -312,12 +344,13 @@ async def check_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def when_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not has_access(user_id):
-        await update.message.reply_text("🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month.")
+        await send_upgrade_prompt(update.message)
         return
 
     reset_when(user_id)
     await update.message.reply_text(
-        "⏱ Best Time to Book\nTap start:",
+        "⏱ Best Time to Book\n\n"
+        "Answer a few questions and Airlo will suggest the optimal booking window.",
         reply_markup=kb([
             [InlineKeyboardButton("Start ⏱", callback_data="WHEN_START")],
             [InlineKeyboardButton("What this does ℹ️", callback_data="WHEN_INFO")],
@@ -358,14 +391,16 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = state["data"]
     cd = query.data
 
-    # Debug (safe)
     print("BUTTON CLICKED:", cd)
 
     # Quick status
     if cd == "SHOW_STATUS":
-        await query.edit_message_text(access_status_text(user_id), reply_markup=kb([
-            [InlineKeyboardButton("Back ◀️", callback_data="START_MENU")]
-        ]))
+        text = access_status_text(user_id)
+        if not has_access(user_id):
+            await query.edit_message_text(text)
+            await send_upgrade_prompt(query.message)
+        else:
+            await query.edit_message_text(text, reply_markup=kb([[InlineKeyboardButton("Back ◀️", callback_data="START_MENU")]]))
         return
 
     if cd == "START_MENU":
@@ -388,7 +423,8 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Select your default departure airport:",
             reply_markup=kb([
                 [InlineKeyboardButton("Any London", callback_data="SET_AP_LON")],
-                [InlineKeyboardButton("LHR", callback_data="SET_AP_LHR"), InlineKeyboardButton("LGW", callback_data="SET_AP_LGW")],
+                [InlineKeyboardButton("LHR", callback_data="SET_AP_LHR"),
+                 InlineKeyboardButton("LGW", callback_data="SET_AP_LGW")],
                 [InlineKeyboardButton("MAN", callback_data="SET_AP_MAN")],
                 [InlineKeyboardButton("Any", callback_data="SET_AP_ANY")],
                 [InlineKeyboardButton("Back ◀️", callback_data="SETTINGS_BACK")],
@@ -464,7 +500,8 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if cd == "WHEN_START":
         if not has_access(user_id):
-            await query.edit_message_text("🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month.")
+            await query.edit_message_text("🔒 Airlo access required.")
+            await send_upgrade_prompt(query.message)
             return
 
         reset_when(user_id)
@@ -553,7 +590,8 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if cd == "CHECK_START":
         if not has_access(user_id):
-            await query.edit_message_text("🔒 Airlo access required\n\nGet 7-day access for £1 at tryairlo.com\nThen £19/month.")
+            await query.edit_message_text("🔒 Airlo access required.")
+            await send_upgrade_prompt(query.message)
             return
 
         reset_check(user_id)
@@ -679,7 +717,6 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if cd.startswith("PR_"):
-        # Normalize to CHEAP/BAL/FAST/COMF
         pr = cd.replace("PR_", "")
         data["priority"] = pr
         state["step"] = "ASK_PRICE"
@@ -704,7 +741,10 @@ async def on_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Fallback
-    await query.edit_message_text("Use /start to begin.", reply_markup=kb([[InlineKeyboardButton("Start ◀️", callback_data="START_MENU")]]))
+    await query.edit_message_text(
+        "Use /start to begin.",
+        reply_markup=kb([[InlineKeyboardButton("Start ◀️", callback_data="START_MENU")]])
+    )
 
 
 # -------------------------
@@ -782,4 +822,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
